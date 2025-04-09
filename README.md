@@ -59,6 +59,7 @@ The chatbot uses **Retrieval-Augmented Generation**, combining semantic search o
 git clone https://github.com/perarulalan15/FlashLearn-Smart-Study-Assistant.git
 cd flashlearn
 python manage.py runserver
+```
 
 ## 👥 Contributors
 
