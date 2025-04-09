@@ -52,6 +52,12 @@ The chatbot uses **Retrieval-Augmented Generation**, combining semantic search o
 
 ---
 
+## Demo
+
+https://github.com/user-attachments/assets/5c98959f-b7c5-4e26-a1ba-ae3e3c0f1abb
+
+---
+
 ## 🧪 Running Locally
 
 ```bash
