@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+
+{% block title %}PDF Summarizer{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1 class="mb-4">PDF Summarizer</h1>
+        
+        {% if not document %}
+            <!-- PDF Upload Form -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Upload PDF Document</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'upload_pdf' %}" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="{{ form.title.id_for_label }}" class="form-label">Document Title</label>
+                            {{ form.title }}
+                        </div>
+                        <div class="mb-3">
+                            <label for="{{ form.file.id_for_label }}" class="form-label">PDF File</label>
+                            {{ form.file }}
+                        </div>
+                        <button type="submit" class="btn btn-primary">Upload</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Document List -->
+            {% if documents %}
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Your Documents</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="list-group">
+                            {% for doc in documents %}
+                                <a href="{% url 'document_topics' doc.id %}" class="list-group-item list-group-item-action">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h5 class="mb-1">{{ doc.title }}</h5>
+                                        <small>{{ doc.uploaded_at|date:"M d, Y" }}</small>
+                                    </div>
+                                    <p class="mb-1">
+                                        {% for summary in doc.summary_set.all %}
+                                            <span class="badge bg-info me-1">{{ summary.topic_title }}</span>
+                                        {% empty %}
+                                            <small class="text-muted">No summaries yet</small>
+                                        {% endfor %}
+                                    </p>
+                                </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        
+        {% elif form and not summary %}
+            <!-- Topic Selection Form -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Select a Topic to Summarize</h5>
+                </div>
+                <div class="card-body">
+                    <p>Document: <strong>{{ document.title }}</strong></p>
+                    <form method="post" action="{% url 'generate_summary' document.id %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="{{ form.topic.id_for_label }}" class="form-label">Choose a Topic</label>
+                            {{ form.topic }}
+                        </div>
+                        <button type="submit" class="btn btn-primary">Generate Summary</button>
+                        <a href="{% url 'home' %}" class="btn btn-secondary">Cancel</a>
+                    </form>
+                </div>
+            </div>
+        
+        {% elif summary %}
+            <!-- Summary View -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">{{ summary.topic_title }}</h5>
+                    <div>
+                        <a href="{% url 'flashcards' summary.id %}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-copy me-1"></i> Flashcards
+                        </a>
+                        <a href="{% url 'document_topics' document.id %}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-arrow-left me-1"></i> Back to Topics
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-3">
+                        <strong>Document:</strong> {{ document.title }} | 
+                        <strong>Generated:</strong> {{ summary.created_at|date:"M d, Y H:i" }}
+                    </p>
+                    <div class="summary-content">
+                        {{ summary.content|linebreaks }}
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Make form inputs have Bootstrap styles
+    document.addEventListener('DOMContentLoaded', function() {
+        var inputs = document.querySelectorAll('input[type="text"], input[type="file"]');
+        inputs.forEach(function(input) {
+            input.classList.add('form-control');
+        });
+        
+        var selects = document.querySelectorAll('select');
+        selects.forEach(function(select) {
+            select.classList.add('form-select');
+        });
+    });
+</script>
+{% endblock %}

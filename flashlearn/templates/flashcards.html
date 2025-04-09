@@ -1,0 +1,188 @@
+{% extends 'base.html' %}
+
+{% block title %}Flashcards{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1 class="mb-4">Flashcards</h1>
+        
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">{{ summary.topic_title }}</h5>
+                <a href="{% url 'view_summary' summary.id %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-arrow-left me-1"></i> Back to Summary
+                </a>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-3">
+                    <strong>Document:</strong> {{ summary.document.title }}
+                </p>
+                
+                {% if not flashcards %}
+                    <div class="alert alert-info">
+                        <p>No flashcards generated yet. Generate some using the form below.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        {% if not flashcards %}
+            <!-- Flashcard Generation Form -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Generate Flashcards</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'generate_flashcards' summary.id %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="{{ form.num_cards.id_for_label }}" class="form-label">Number of Flashcards</label>
+                            {{ form.num_cards }}
+                            <div class="form-text">Select the number of flashcards you want to generate.</div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Generate Flashcards</button>
+                    </form>
+                </div>
+            </div>
+        {% else %}
+            <!-- Flashcard Controls -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Flashcard Controls</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <button id="prev-card" class="btn btn-outline-primary" disabled>
+                            <i class="fas fa-arrow-left me-1"></i> Previous
+                        </button>
+                        <div>
+                            <span id="current-card">1</span> / <span id="total-cards">{{ flashcards|length }}</span>
+                        </div>
+                        <button id="next-card" class="btn btn-outline-primary" {% if flashcards|length <= 1 %}disabled{% endif %}>
+                            Next <i class="fas fa-arrow-right ms-1"></i>
+                        </button>
+                    </div>
+                    <div class="mt-3 text-center">
+                        <button id="regenerate-btn" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#regenerateModal">
+                            <i class="fas fa-sync-alt me-1"></i> Regenerate Flashcards
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Flashcards Display -->
+            <div id="flashcards-container">
+                {% for card in flashcards %}
+                    <div class="flashcard {% if not forloop.first %}d-none{% endif %}" data-index="{{ forloop.counter0 }}">
+                        <div class="flashcard-inner">
+                            <div class="flashcard-front">
+                                <div class="text-center">
+                                    <h4>{{ card.question }}</h4>
+                                    <p class="text-muted mt-3">(Click to reveal answer)</p>
+                                </div>
+                            </div>
+                            <div class="flashcard-back">
+                                <div>
+                                    <h4 class="text-primary mb-3">Answer:</h4>
+                                    <p>{{ card.answer }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+            
+            <!-- Regenerate Modal -->
+            <div class="modal fade" id="regenerateModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Regenerate Flashcards</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form method="post" action="{% url 'generate_flashcards' summary.id %}">
+                                {% csrf_token %}
+                                <div class="mb-3">
+                                    <label for="{{ form.num_cards.id_for_label }}" class="form-label">Number of Flashcards</label>
+                                    {{ form.num_cards }}
+                                    <div class="form-text">This will replace your existing flashcards.</div>
+                                </div>
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary">Generate New Flashcards</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Make form inputs have Bootstrap styles
+    document.addEventListener('DOMContentLoaded', function() {
+        var inputs = document.querySelectorAll('input[type="text"], input[type="number"]');
+        inputs.forEach(function(input) {
+            input.classList.add('form-control');
+        });
+        
+        var selects = document.querySelectorAll('select');
+        selects.forEach(function(select) {
+            select.classList.add('form-select');
+        });
+        
+        // Flashcards functionality
+        var flashcards = document.querySelectorAll('.flashcard');
+        var currentIndex = 0;
+        var currentCardDisplay = document.getElementById('current-card');
+        var prevButton = document.getElementById('prev-card');
+        var nextButton = document.getElementById('next-card');
+        
+        if (flashcards.length > 0) {
+            // Add click listener to flip cards
+            flashcards.forEach(function(card) {
+                card.addEventListener('click', function() {
+                    this.classList.toggle('flipped');
+                });
+            });
+            
+            // Navigation functions
+            function updateCardDisplay() {
+                currentCardDisplay.textContent = currentIndex + 1;
+                
+                prevButton.disabled = (currentIndex === 0);
+                nextButton.disabled = (currentIndex === flashcards.length - 1);
+                
+                // Hide all cards and show current one
+                flashcards.forEach(function(card, index) {
+                    if (index === currentIndex) {
+                        card.classList.remove('d-none');
+                        card.classList.remove('flipped'); // Reset flip state
+                    } else {
+                        card.classList.add('d-none');
+                    }
+                });
+            }
+            
+            prevButton.addEventListener('click', function() {
+                if (currentIndex > 0) {
+                    currentIndex--;
+                    updateCardDisplay();
+                }
+            });
+            
+            nextButton.addEventListener('click', function() {
+                if (currentIndex < flashcards.length - 1) {
+                    currentIndex++;
+                    updateCardDisplay();
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

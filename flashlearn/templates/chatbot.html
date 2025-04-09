@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+
+{% block title %}Chatbot{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1 class="mb-4">Chatbot</h1>
+        
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Chatbot for: {{ document.title }}</h5>
+                <a href="{% url 'document_topics' document.id %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-arrow-left me-1"></i> Back to Document
+                </a>
+            </div>
+            <div class="card-body">
+                {% if not vector_store_exists %}
+                    <div class="alert alert-warning">
+                        <p><i class="fas fa-exclamation-triangle me-2"></i> You need to create a knowledge base before chatting.</p>
+                        <button id="create-kb-btn" class="btn btn-primary" onclick="createKnowledgeBase()">
+                            <i class="fas fa-database me-1"></i> Create Knowledge Base
+                        </button>
+                        <div id="kb-loader" class="loader mt-3"></div>
+                    </div>
+                {% endif %}
+                
+                <div class="chat-container mb-3" id="chat-container">
+                    {% for message in chat_messages %}
+                        <div class="chat-message {{ message.role }}">
+                            {% if message.role == 'user' %}
+                                <strong>You:</strong>
+                            {% else %}
+                                <strong>Assistant:</strong>
+                            {% endif %}
+                            <div>{{ message.content|linebreaks }}</div>
+                        </div>
+                    {% empty %}
+                        <div class="text-center text-muted p-4">
+                            <i class="fas fa-comments fa-2x mb-2"></i>
+                            <p>Ask questions about the document content</p>
+                        </div>
+                    {% endfor %}
+                </div>
+                
+                <form method="post" action="{% url 'chat_message' document.id %}" id="chat-form">
+                    {% csrf_token %}
+                    <div class="input-group">
+                        {{ form.message }}
+                        <button type="submit" class="btn btn-primary" {% if not vector_store_exists %}disabled{% endif %}>
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        {% comment %} <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Tips for Effective Questions</h5>
+            </div>
+            <div class="card-body">
+                <ul>
+                    <li>Ask specific questions about the content of the document</li>
+                    <li>For complex topics, break down your questions into smaller parts</li>
+                    <li>You can ask for summaries of specific sections</li>
+                    <li>Try asking for examples or explanations of concepts mentioned in the document</li>
+                    <li>Ask for comparisons between different ideas in the document</li>
+                </ul>
+            </div>
+        </div> {% endcomment %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Make form inputs have Bootstrap styles
+    document.addEventListener('DOMContentLoaded', function() {
+        var inputs = document.querySelectorAll('input[type="text"]');
+        inputs.forEach(function(input) {
+            input.classList.add('form-control');
+        });
+        
+        // Auto-scroll to bottom of chat
+        var chatContainer = document.getElementById('chat-container');
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    });
+    
+    // Knowledge base creation
+    function createKnowledgeBase() {
+        var loader = document.getElementById('kb-loader');
+        var button = document.getElementById('create-kb-btn');
+        
+        loader.style.display = 'block';
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Processing...';
+        
+        fetch('{% url "create_knowledge_base" document.id %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                window.location.reload();
+            } else {
+                alert('Error: ' + data.message);
+                loader.style.display = 'none';
+                button.disabled = false;
+                button.innerHTML = '<i class="fas fa-database me-1"></i> Create Knowledge Base';
+            }
+        })
+        .catch(error => {
+            alert('Error: ' + error);
+            loader.style.display = 'none';
+            button.disabled = false;
+            button.innerHTML = '<i class="fas fa-database me-1"></i> Create Knowledge Base';
+        });
+    }
+</script>
+{% endblock %}
